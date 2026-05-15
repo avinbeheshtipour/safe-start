@@ -1,5 +1,7 @@
+import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router';
 import { Heart, Home, Shield, Globe, Briefcase, Users, ArrowLeft, Bookmark, Share2, CheckCircle } from 'lucide-react';
+import { ApiItem, getResourcesByCategory } from '../lib/api';
 
 const categoryData: Record<string, {
   title: string;
@@ -390,9 +392,63 @@ const categoryData: Record<string, {
   }
 };
 
+const categoryAliases: Record<string, string> = {
+  healthcare: 'medical-healthcare',
+  housing: 'housing-renting',
+  'legal-rights': 'police-law'
+};
+
+const apiCategoryByPageId: Record<string, string> = {
+  'medical-healthcare': 'healthcare',
+  'housing-renting': 'housing',
+  'police-law': 'legal-rights',
+  'mental-health': 'mental-health',
+  'settlement-worker': 'settlement-worker',
+  'community-support': 'community-support'
+};
+
 export function CategoryPage() {
   const { categoryId } = useParams();
-  const category = categoryData[categoryId || ''];
+  const resolvedCategoryId = categoryAliases[categoryId || ''] || categoryId || '';
+  const category = categoryData[resolvedCategoryId];
+  const [relatedResources, setRelatedResources] = useState<ApiItem[]>([]);
+  const [resourcesLoading, setResourcesLoading] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    const apiCategory = apiCategoryByPageId[resolvedCategoryId];
+
+    if (!apiCategory) {
+      setRelatedResources([]);
+      return;
+    }
+
+    async function loadRelatedResources() {
+      setResourcesLoading(true);
+
+      try {
+        const resources = await getResourcesByCategory(apiCategory);
+
+        if (!isMounted) return;
+
+        setRelatedResources(resources);
+      } catch {
+        if (!isMounted) return;
+
+        setRelatedResources([]);
+      } finally {
+        if (isMounted) {
+          setResourcesLoading(false);
+        }
+      }
+    }
+
+    loadRelatedResources();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [resolvedCategoryId]);
 
   if (!category) {
     return (
@@ -430,6 +486,9 @@ export function CategoryPage() {
         <div className="mb-10">
           <h2 className="text-2xl font-semibold text-slate-900 mb-2">Popular Articles</h2>
           <p className="text-slate-600">Step-by-step guides to help you navigate this topic</p>
+          {resourcesLoading && (
+            <p className="text-sm text-slate-500 mt-2">Loading related resources...</p>
+          )}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
@@ -482,6 +541,56 @@ export function CategoryPage() {
             </Link>
           ))}
         </div>
+
+        {relatedResources.length > 0 && (
+          <div className="mt-12">
+            <div className="mb-6">
+              <h2 className="text-2xl font-semibold text-slate-900 mb-2">Related Resources</h2>
+              <p className="text-slate-600">Live sample resources from the SafeStart backend</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {relatedResources.map((resource) => (
+                <div
+                  key={resource.id}
+                  className="bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md transition-all overflow-hidden"
+                >
+                  <div className="h-44 bg-slate-100">
+                    <img
+                      src={resource.imageUrl}
+                      alt={resource.title}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div className="p-6">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="px-2.5 py-1 bg-teal-100 text-teal-800 text-xs rounded font-medium">
+                        {resource.location}
+                      </span>
+                      {resource.urgent && (
+                        <span className="px-2.5 py-1 bg-red-100 text-red-800 text-xs rounded font-medium">
+                          Urgent
+                        </span>
+                      )}
+                    </div>
+                    <h3 className="text-xl font-semibold text-slate-900 mb-2">{resource.title}</h3>
+                    <p className="text-slate-600 mb-4 leading-relaxed">{resource.description}</p>
+                    <div className="flex flex-wrap gap-2">
+                      {resource.tags.map((tag) => (
+                        <span
+                          key={tag}
+                          className="px-2.5 py-1 bg-slate-100 text-slate-700 rounded text-xs font-medium"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="mt-12 bg-slate-100 border border-slate-200 rounded-lg p-8">
           <div className="flex items-start space-x-4">

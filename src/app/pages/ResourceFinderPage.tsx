@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { MapPin, Search, Filter, Heart, Home, Building2, Scale, UtensilsCrossed, GraduationCap, Phone, Clock, Globe, Star, Navigation } from 'lucide-react';
+import { ApiItem, getResources } from '../lib/api';
 
 interface Resource {
   id: number;
@@ -131,24 +132,94 @@ const mockResources: Resource[] = [
   }
 ];
 
+const resourceTypeByCategory: Record<string, string> = {
+  healthcare: 'Walk-in Clinic',
+  housing: 'Support Center',
+  'legal-rights': 'Legal Services',
+  'mental-health': 'Support Center',
+  'settlement-worker': 'Settlement Agency',
+  'community-support': 'Support Center'
+};
+
+function mapApiItemToResource(item: ApiItem): Resource {
+  const type = resourceTypeByCategory[item.category] || 'Support Center';
+
+  return {
+    id: item.id,
+    name: item.title,
+    type,
+    address: item.location === 'Canada-wide' ? 'Available Canada-wide' : 'Local service area',
+    city: item.location,
+    phone: item.urgent ? '911 / local crisis line' : 'Contact local office',
+    hours: item.urgent ? 'Urgent support available' : 'Hours vary by location',
+    languages: ['English', 'Français'],
+    free: item.category !== 'healthcare',
+    rating: item.urgent ? 4.9 : 4.6,
+    distance: item.location === 'Canada-wide' ? 'Canada-wide' : 'Nearby',
+    description: item.description
+  };
+}
+
 export function ResourceFinderPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedType, setSelectedType] = useState('All');
   const [freeOnly, setFreeOnly] = useState(false);
   const [openNow, setOpenNow] = useState(false);
+  const [resources, setResources] = useState<Resource[]>(mockResources);
+  const [resourcesLoading, setResourcesLoading] = useState(false);
+  const [usingFallbackResources, setUsingFallbackResources] = useState(false);
 
-  const resourceTypes = [
-    { name: 'All', icon: MapPin, count: 8 },
-    { name: 'Walk-in Clinic', icon: Heart, count: 1 },
-    { name: 'Hospital', icon: Building2, count: 1 },
-    { name: 'Settlement Agency', icon: Home, count: 2 },
-    { name: 'Legal Services', icon: Scale, count: 1 },
-    { name: 'Food Bank', icon: UtensilsCrossed, count: 1 },
-    { name: 'Library', icon: GraduationCap, count: 1 },
-    { name: 'Support Center', icon: Heart, count: 1 }
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadResources() {
+      setResourcesLoading(true);
+
+      try {
+        const apiResources = await getResources();
+
+        if (!isMounted) return;
+
+        setResources(apiResources.map(mapApiItemToResource));
+        setUsingFallbackResources(false);
+      } catch {
+        if (!isMounted) return;
+
+        setResources(mockResources);
+        setUsingFallbackResources(true);
+      } finally {
+        if (isMounted) {
+          setResourcesLoading(false);
+        }
+      }
+    }
+
+    loadResources();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const baseResourceTypes = [
+    { name: 'All', icon: MapPin },
+    { name: 'Walk-in Clinic', icon: Heart },
+    { name: 'Hospital', icon: Building2 },
+    { name: 'Settlement Agency', icon: Home },
+    { name: 'Legal Services', icon: Scale },
+    { name: 'Food Bank', icon: UtensilsCrossed },
+    { name: 'Library', icon: GraduationCap },
+    { name: 'Support Center', icon: Heart }
   ];
 
-  const filteredResources = mockResources.filter(resource => {
+  const resourceTypes = baseResourceTypes.map((type) => ({
+    ...type,
+    count: type.name === 'All'
+      ? resources.length
+      : resources.filter((resource) => resource.type === type.name).length
+  }));
+
+  const filteredResources = resources.filter(resource => {
     const matchesSearch = resource.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          resource.description.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesType = selectedType === 'All' || resource.type === selectedType;
@@ -264,7 +335,13 @@ export function ResourceFinderPage() {
               <h2 className="text-2xl font-semibold text-slate-900 mb-2">
                 {filteredResources.length} Resources Found
               </h2>
-              <p className="text-slate-600">Showing results near Toronto, ON</p>
+              <p className="text-slate-600">
+                {resourcesLoading
+                  ? 'Loading resources...'
+                  : usingFallbackResources
+                    ? 'Showing sample resources while the backend is unavailable'
+                    : 'Showing resources from the SafeStart backend'}
+              </p>
             </div>
 
             <div className="space-y-5">

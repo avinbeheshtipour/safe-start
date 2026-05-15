@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
+import { ApiItem, getPosts, getRecommendedPosts } from '../lib/api';
 import {
   Phone,
   Home as HomeIcon,
@@ -23,8 +24,123 @@ import {
   Bookmark
 } from 'lucide-react';
 
+const categoryLabels: Record<string, string> = {
+  healthcare: 'Healthcare',
+  housing: 'Housing',
+  'legal-rights': 'Legal',
+  'mental-health': 'Mental Health',
+  'settlement-worker': 'Settlement',
+  'community-support': 'Community'
+};
+
+const categoryStyles: Record<string, { categoryColor: string; profileColor: string; thumbnailBg: string; role: string; initials: string }> = {
+  healthcare: {
+    categoryColor: 'bg-teal-100 text-teal-800',
+    profileColor: 'bg-teal-500',
+    thumbnailBg: 'bg-teal-50',
+    role: 'Healthcare Advisor',
+    initials: 'HC'
+  },
+  housing: {
+    categoryColor: 'bg-blue-100 text-blue-800',
+    profileColor: 'bg-blue-600',
+    thumbnailBg: 'bg-blue-50',
+    role: 'Housing Support',
+    initials: 'HS'
+  },
+  'legal-rights': {
+    categoryColor: 'bg-slate-100 text-slate-800',
+    profileColor: 'bg-slate-700',
+    thumbnailBg: 'bg-slate-50',
+    role: 'Legal Rights Support',
+    initials: 'LR'
+  },
+  'mental-health': {
+    categoryColor: 'bg-purple-100 text-purple-800',
+    profileColor: 'bg-purple-500',
+    thumbnailBg: 'bg-purple-50',
+    role: 'Mental Health Support',
+    initials: 'MH'
+  },
+  'settlement-worker': {
+    categoryColor: 'bg-emerald-100 text-emerald-800',
+    profileColor: 'bg-emerald-600',
+    thumbnailBg: 'bg-emerald-50',
+    role: 'Settlement Worker',
+    initials: 'SW'
+  },
+  'community-support': {
+    categoryColor: 'bg-indigo-100 text-indigo-800',
+    profileColor: 'bg-indigo-600',
+    thumbnailBg: 'bg-indigo-50',
+    role: 'Community Support',
+    initials: 'CS'
+  }
+};
+
+function mapApiItemToPost(item: ApiItem, recommended = false) {
+  const style = categoryStyles[item.category] || categoryStyles['community-support'];
+  return {
+    id: item.id,
+    author: item.title,
+    role: style.role,
+    verified: true,
+    organization: item.location,
+    profileColor: style.profileColor,
+    initials: style.initials,
+    content: item.description,
+    category: categoryLabels[item.category] || item.category,
+    categoryColor: style.categoryColor,
+    thumbnail: true,
+    thumbnailBg: style.thumbnailBg,
+    imageUrl: item.imageUrl,
+    likes: item.urgent ? 911 : 120 + item.id * 19,
+    helpful: item.urgent ? 300 : 90 + item.id * 17,
+    recommended: recommended || item.tags.includes('recommended')
+  };
+}
+
 export function HomePage() {
   const [activeSection, setActiveSection] = useState<'main' | 'explore' | 'following' | 'foryou'>('main');
+  const [apiExplorePosts, setApiExplorePosts] = useState<ReturnType<typeof mapApiItemToPost>[]>([]);
+  const [apiRecommendedPosts, setApiRecommendedPosts] = useState<ReturnType<typeof mapApiItemToPost>[]>([]);
+  const [postsLoading, setPostsLoading] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadPosts() {
+      setPostsLoading(true);
+
+      try {
+        const [posts, recommendedPosts] = await Promise.all([
+          getPosts(),
+          getRecommendedPosts()
+        ]);
+
+        if (!isMounted) return;
+
+        setApiExplorePosts(posts.map((post) => mapApiItemToPost(post)));
+        setApiRecommendedPosts(recommendedPosts.map((post) => mapApiItemToPost(post, true)));
+      } catch {
+        if (!isMounted) return;
+
+        setApiExplorePosts([]);
+        setApiRecommendedPosts([]);
+      } finally {
+        if (isMounted) {
+          setPostsLoading(false);
+        }
+      }
+    }
+
+    loadPosts();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const supportCards = [
     {
       title: 'Healthcare',
@@ -319,6 +435,9 @@ export function HomePage() {
     }
   ];
 
+  const displayedExploreContent = apiExplorePosts.length > 0 ? apiExplorePosts : exploreContent;
+  const displayedForYouContent = apiRecommendedPosts.length > 0 ? apiRecommendedPosts : forYouContent;
+
   const renderMainSupport = () => (
     <>
       {/* Emergency Banner */}
@@ -483,10 +602,13 @@ export function HomePage() {
       <div className="mb-8">
         <h2 className="text-3xl font-semibold text-slate-900 mb-2">Explore</h2>
         <p className="text-lg text-slate-600">Helpful posts from verified professionals and organizations</p>
+        {postsLoading && (
+          <p className="text-sm text-slate-500 mt-2">Loading latest posts...</p>
+        )}
       </div>
 
       <div className="space-y-5">
-        {exploreContent.map((post) => (
+        {displayedExploreContent.map((post) => (
           <div key={post.id} className="bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md transition overflow-hidden">
             <div className="p-6">
               <div className="flex items-start space-x-3 mb-4">
@@ -511,6 +633,14 @@ export function HomePage() {
 
               {post.thumbnail && (
                 <div className="border border-slate-200 rounded-lg h-64 mb-4 overflow-hidden">
+                  {'imageUrl' in post && post.imageUrl ? (
+                    <img
+                      src={post.imageUrl}
+                      alt={post.category}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <>
                   {post.category === 'Healthcare' && (
                     <img
                       src="https://images.unsplash.com/photo-1666886573531-48d2e3c2b684?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080"
@@ -559,6 +689,8 @@ export function HomePage() {
                       alt="Immigration documents and passport"
                       className="w-full h-full object-cover"
                     />
+                  )}
+                    </>
                   )}
                 </div>
               )}
@@ -695,10 +827,13 @@ export function HomePage() {
       <div className="mb-8">
         <h2 className="text-3xl font-semibold text-slate-900 mb-2">For You</h2>
         <p className="text-lg text-slate-600">Personalized recommendations based on your interests and needs</p>
+        {postsLoading && (
+          <p className="text-sm text-slate-500 mt-2">Loading recommendations...</p>
+        )}
       </div>
 
       <div className="space-y-5">
-        {forYouContent.map((post) => (
+        {displayedForYouContent.map((post) => (
           <div key={post.id} className="bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md transition overflow-hidden">
             <div className="p-6">
               <div className="flex items-start space-x-3 mb-4">
@@ -729,6 +864,14 @@ export function HomePage() {
 
               {post.thumbnail && (
                 <div className="border border-slate-200 rounded-lg h-64 mb-4 overflow-hidden">
+                  {'imageUrl' in post && post.imageUrl ? (
+                    <img
+                      src={post.imageUrl}
+                      alt={post.category}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <>
                   {post.category === 'Healthcare' && (
                     <img
                       src="https://images.unsplash.com/photo-1666886573531-48d2e3c2b684?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080"
@@ -777,6 +920,8 @@ export function HomePage() {
                       alt="Immigration documents and passport"
                       className="w-full h-full object-cover"
                     />
+                  )}
+                    </>
                   )}
                 </div>
               )}
