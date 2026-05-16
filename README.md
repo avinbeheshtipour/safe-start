@@ -45,40 +45,6 @@ SafeStart Canada organizes these topics into clear, action-oriented pages so use
 <img width="1467" height="800" alt="Screenshot 2026-05-14 at 8 06 11 PM" src="https://github.com/user-attachments/assets/1a98199b-c8e8-40c6-bb1f-37909a6e5f6d" />
 
 
-## Installation
-
-Clone the repository:
-
-```bash
-git clone <your-repository-url>
-cd <your-repository-folder>
-```
-
-Install dependencies:
-
-```bash
-npm install
-```
-
-## Run Locally
-
-Start the development server:
-
-```bash
-npm run dev
-```
-
-If you need to bind explicitly to localhost:
-
-```bash
-npm run dev -- --host 127.0.0.1
-```
-
-Create a production build:
-
-```bash
-npm run build
-```
 
 ## Project Structure
 
