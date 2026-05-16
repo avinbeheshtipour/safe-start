@@ -41,7 +41,7 @@ SafeStart Canada organizes these topics into clear, action-oriented pages so use
 <img width="1468" height="801" alt="Screenshot 2026-05-14 at 8 06 49 PM" src="https://github.com/user-attachments/assets/29ede98e-3092-4c32-99bb-cc78dd3507f6" />
 <img width="1467" height="803" alt="Screenshot 2026-05-14 at 8 06 27 PM" src="https://github.com/user-attachments/assets/9f2d15a1-7ff5-40b9-8d6e-93a25ae770c6" />
 <img width="1467" height="800" alt="Screenshot 2026-05-14 at 8 06 11 PM" src="https://github.com/user-attachments/assets/1a98199b-c8e8-40c6-bb1f-37909a6e5f6d" />
-<img width="1467" height="800" alt="Screenshot 2026-05-14 at 8 06 11 PM" src="https://github.com/user-attachments/assets/949821c9-37a5-4323-b829-4ee128a1d253" />
+
 
 ## Installation
 
