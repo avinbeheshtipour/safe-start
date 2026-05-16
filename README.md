@@ -6,7 +6,6 @@ SafeStart Canada is a responsive front-end web application that helps newcomers 
 
 The project was implemented from a Figma design as a polished portfolio application for demonstrating product thinking, React development, responsive UI architecture, and user-centered interface design.
 
-Original design reference: [Create this design on Figma](https://www.figma.com/design/zBB8WaVozuvk22BtO2oYaB/Create-this-design)
 
 ## Problem Statement
 
